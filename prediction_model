@@ -1,0 +1,58 @@
+# Linear Regression Analysis Example
+
+import pandas as pd
+import numpy as np
+import statsmodels.api as sm
+import seaborn as sns
+import matplotlib.pyplot as plt
+from sklearn.datasets import fetch_california_housing
+from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.compat import lzip
+from statsmodels.stats.diagnostic import het_breuschpagan, normal_ad
+
+# Load dataset
+california = fetch_california_housing()
+df = pd.DataFrame(california.data, columns=california.feature_names)
+df['Target'] = california.target
+
+# Select predictors and target
+X = df[['AveRooms', 'AveOccup', 'HouseAge', 'MedInc']]
+y = df['Target']
+
+# Add constant for intercept
+X_const = sm.add_constant(X)
+
+# Fit linear regression model
+model = sm.OLS(y, X_const).fit()
+
+# Summary of the model
+print(model.summary())
+
+# Durbin-Watson
+from statsmodels.stats.stattools import durbin_watson
+dw_stat = durbin_watson(model.resid)
+print(f"\nDurbin-Watson: {dw_stat:.2f}")
+
+# Variance Inflation Factor (VIF)
+vif_data = pd.DataFrame()
+vif_data['feature'] = X_const.columns
+vif_data['VIF'] = [variance_inflation_factor(X_const.values, i) for i in range(X_const.shape[1])]
+print("\nVariance Inflation Factor (VIF):")
+print(vif_data)
+
+# Jarque-Bera Normality Test
+jb_stat, jb_pvalue = normal_ad(model.resid)
+print(f"\nJarque-Bera p-value: {jb_pvalue:.4f}")
+
+# Breusch-Pagan Test for Heteroscedasticity
+bp_test = het_breuschpagan(model.resid, X_const)
+labels = ['Lagrange multiplier statistic', 'p-value', 'f-value', 'f p-value']
+print("\nBreusch-Pagan Test:")
+print(dict(zip(labels, bp_test)))
+
+# Plot residuals
+sns.residplot(x=model.fittedvalues, y=model.resid, lowess=True)
+plt.xlabel('Fitted Values')
+plt.ylabel('Residuals')
+plt.title('Residuals vs Fitted')
+plt.show()
